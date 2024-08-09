@@ -1,0 +1,91 @@
+name: build-odoo-docs
+
+on: 
+  workflow_dispatch:
+    inputs:
+      sourcecode:
+        description: 'With inline docstrings'
+        required: true
+        default: '17.0' 
+        type: choice
+        options:
+        - '17.0'
+        - '16.0'
+        - '15.0'
+        - '14.0'
+      branch:
+        description: 'Target branch'
+        required: true
+        default: 'main'
+        type: choice
+        options:
+        - 'main'
+        - 'develop'
+        - 'l10n_crowdin_action'
+      python-version:
+        description: 'Python version'
+        required: true
+        default: '3.10'
+        type: choice
+        options:
+        - '3.10'
+        - '3.8'
+
+jobs:
+  build-and-deploy:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout odoo/documentation
+        uses: actions/checkout@v3
+        with:
+          repository: odoo/documentation
+          ref: ${{ github.event.inputs.sourcecode }}
+      - name: Checkout odoo/odoo
+        uses: actions/checkout@v3
+        with:
+          repository: odoo/odoo
+          ref: ${{ github.event.inputs.sourcecode }}
+          path: odoo
+      # - name: Checkout mark-myer/odoo-docs-src
+      #   uses: actions/checkout@v3
+      #   with:
+      #     repository: mark-myer/odoo-docs-locale-${{ github.event.inputs.sourcecode }}
+      #     ref: ${{ github.event.inputs.branch }}
+      #     path: locale/ja
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ github.event.inputs.python-version }}
+      - name: Install additional OS packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libldap2-dev libsasl2-dev
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Install dependencies of odoo/odoo
+        run: |
+          pip install -r odoo/requirements.txt
+      - name: Build Sphinx docs
+        run: |
+          make html
+      - name: Checkout target repo
+        uses: actions/checkout@v3
+        with:
+          repository: mark-myer/odoo-docs
+          ref: main
+          path: target-repo
+      - name: Copy built docs to target repo
+        run: |
+          cp -r _build/html/* odoo-docs/
+      - name: Commit and push changes
+        run: |
+          cd odoo-docs
+          git config --global user.email "myerhs@abcmailbox.net"
+          git config --global user.name "Marcus"
+          git add .
+          git commit -m "Update built docs"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
