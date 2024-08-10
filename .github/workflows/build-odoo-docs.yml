@@ -75,17 +75,17 @@ jobs:
         with:
           repository: mark-myer/odoo-docs
           ref: main
-          path: target-repo
+          path: odoo-docs
       - name: Copy built docs to target repo
         run: |
           cp -r _build/html/* odoo-docs/
       - name: Commit and push changes
         run: |
           cd odoo-docs
-          git config --global user.email "myerhs@abcmailbox.net"
-          git config --global user.name "Marcus"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
           git add .
           git commit -m "Update built docs"
-          git push
+          git push origin main
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
